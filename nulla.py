@@ -30,6 +30,8 @@ logging.basicConfig(filename="Nuula.log",format='%(asctime)s, %(levelname)-8s [%
 logger = logging.getLogger()#Creating an object
 logger.setLevel(logging.INFO) #Setting the threshold of logger
 A,B,C,D,E = [],[],[],[],[] # Made a list to store values and raise flag on conditions
+incorrectPath = 0
+rootNotData = 0
 dir = input("Please enter home directory:")
 for filename in os.listdir(dir):
     if not filename.endswith('.xml'): continue
@@ -38,28 +40,35 @@ for filename in os.listdir(dir):
     tree1 = ET.parse(fullname)
     root1 = tree1.getroot()
     if root1.tag == 'Data':
-        D.append(fullname)
+        D.append(fullname)  
         for error in root1.findall("./Nuula/Errors/Error"):
             A.append(error.attrib)
         for message in root1.findall("./DataExtract900jer/Messages/Message"):
             B.append(message.attrib)
         for rule in root1.findall("./DataExtract900jer/Rules/Rule"):
             C.append(rule.attrib)
+        if len(E)>0 and len(A) ==0 and len(B)==0 and len(C)==0:
+          incorrectPath+=1
+          print("Incorrect path of file" + filename)
+          logging.info("Incorrect path" + filename)  
     else:
+        rootNotData+=1
         print("Root of an XML file " + filename + " is not Data")
         logging.info("Root of an XML file " + filename + " is not Data")
-if len(A) or len(B) or len(C) > 0:
-    dfError = pd.DataFrame(A)
-    dfMessage = pd.DataFrame(B)
-    dfRule = pd.DataFrame(C)
-    writer = pd.ExcelWriter('Nuula.xlsx', engine='xlsxwriter')  
-    if len(A) > 0 : dfError.to_excel(writer, sheet_name='Error') 
-    if len(B) > 0 : dfMessage.to_excel(writer, sheet_name='Message') 
-    if len(C) > 0 : dfRule.to_excel(writer, sheet_name='Rules')
-    writer.save()
-    logging.info('ELSX file created')
-if len(E)== 0:
-    print("No file found")    
-    logging.info("No XML found") 
-if len(E)>0 :print("Number of files in the directory",len(E))
-print("Number of XMLs processed:",len(D))
+if len(E)==0 and len(A) ==0 and len(B)==0 and len(C)==0:
+    print("No XML file found")    
+    logging.info("No XML file found")
+if len(E)>0 and len(A)>0 or len(B)> 0 or len(C)>0 :
+      numProcessed = len(E)-(incorrectPath+rootNotData)
+      dfError = pd.DataFrame(A)
+      dfMessage = pd.DataFrame(B)
+      dfRule = pd.DataFrame(C)
+      writer = pd.ExcelWriter('Nuula.xlsx', engine='xlsxwriter')  
+      if len(A) > 0 : dfError.to_excel(writer, sheet_name='Error') 
+      if len(B) > 0 : dfMessage.to_excel(writer, sheet_name='Message') 
+      if len(C) > 0 : dfRule.to_excel(writer, sheet_name='Rules')
+      writer.save()
+      print("Number of XML files in the directory are:",len(E)) #correct
+      print("Number of XMLs processed:",numProcessed)
+      logging.info("Number of files processed: " + str(numProcessed))
+      logging.info('ELSX file created')
