@@ -15,60 +15,76 @@ In the program I declared 5 lists:
     A[] = Has the information of the Error object.
     B[] = Has the information of the Message object.
     C[] = Has the information of the Rules object.
-    D[] = Used as a flag, to check the count. This tells when the root is not Data.
-    E[] = Used as a flag, to check the count. This tells when their is XML file present in the provided directory.
+    D[] = Used as a flag, to check the count. This tells when their is XML file present in the provided directory.
 
 Logic behind this: Extracted the data in the form of Dictionary from XML and put it into lists because I'm using Pandas DF and it take 2 dimensional objects. Once retrieved I used that List of Dictionaries of store the data into Excel. Once we get the data into their respective List then this program makes an Excel sheet with respective the information extracted.
 '''
-import os # For user input
-import xml.etree.cElementTree as ET # To access the XML
-import pandas as pd # To put the extracted data into XLSX file
-import logging # To make a log file 
+import os  # For user input
+import xml.etree.cElementTree as ET
+from numpy import correlate  # To access the XML
+import pandas as pd  # To put the extracted data into XLSX file
+import logging  # To make a log file
 
 # Initializing and creatign object for logging to use in the program
-logging.basicConfig(filename="Nuula.log",format='%(asctime)s, %(levelname)-8s [%(filename)s] %(message)s')
-logger = logging.getLogger()#Creating an object
-logger.setLevel(logging.INFO) #Setting the threshold of logger
-A,B,C,D,E = [],[],[],[],[] # Made a list to store values and raise flag on conditions
-incorrectPath = 0
-rootNotData = 0
+logging.basicConfig(filename="Nuula.log",
+                    format='%(asctime)s, %(levelname)-8s [%(filename)s] %(message)s')
+logger = logging.getLogger()  # Creating an object
+logger.setLevel(logging.INFO)  # Setting the threshold of logger
+# Made a list to store values and raise flag on conditions
+A, B, C, D, procFiles = [], [], [], [], []
+incorrectPath, rootNotData = 0, 0
+correctFiles = []
 dir = input("Please enter home directory:")
 for filename in os.listdir(dir):
-    if not filename.endswith('.xml'): continue
-    fullname = os.path.join(dir,filename)
-    E.append(fullname)
+    if not filename.endswith('.xml'):
+        continue
+    fullname = os.path.join(dir, filename)
+    D.append(fullname)
     tree1 = ET.parse(fullname)
     root1 = tree1.getroot()
     if root1.tag == 'Data':
-        D.append(fullname)  
         for error in root1.findall("./Nuula/Errors/Error"):
             A.append(error.attrib)
         for message in root1.findall("./DataExtract900jer/Messages/Message"):
             B.append(message.attrib)
         for rule in root1.findall("./DataExtract900jer/Rules/Rule"):
             C.append(rule.attrib)
-        if len(E)>0 and len(A) ==0 and len(B)==0 and len(C)==0:
-          incorrectPath+=1
-          print("Incorrect path of file" + filename)
-          logging.info("Incorrect path" + filename)  
+        if len(D) > 0 and len(A) == 0 and len(B) == 0 and len(C) == 0:
+            incorrectPath += 1
+            print("Incorrect path of file" + filename)
+            logging.info("Incorrect path" + filename)
+        else:
+            correctFiles.append(filename)
     else:
-        rootNotData+=1
+        rootNotData += 1
         print("Root of an XML file " + filename + " is not Data")
         logging.info("Root of an XML file " + filename + " is not Data")
-if len(E)==0 and len(A) ==0 and len(B)==0 and len(C)==0:
-    print("No XML file found")    
+if len(D) == 0 and len(A) == 0 and len(B) == 0 and len(C) == 0:
+    print("No XML file found")
     logging.info("No XML file found")
-if len(E)>0 and len(A)>0 or len(B)> 0 or len(C)>0 :
-      numProcessed = len(E)-(incorrectPath+rootNotData)
-      dfError = pd.DataFrame(A)
-      dfMessage = pd.DataFrame(B)
-      dfRule = pd.DataFrame(C)
-      writer = pd.ExcelWriter('Nuula.xlsx', engine='xlsxwriter')  
-      if len(A) > 0 : dfError.to_excel(writer, sheet_name='Error') 
-      if len(B) > 0 : dfMessage.to_excel(writer, sheet_name='Message') 
-      if len(C) > 0 : dfRule.to_excel(writer, sheet_name='Rules')
-      writer.save()
-      print("Number of XML files in the directory are:",len(E)) #correct
-      print("Number of XMLs processed:",numProcessed)
-      logging.info("Number of files processed: " + str(numProcessed))
-      logging.info('ELSX file created')
+if len(D) > 0 and len(A) > 0 or len(B) > 0 or len(C) > 0:
+    numProcessed = len(D)-(incorrectPath+rootNotData)
+    dfError = pd.DataFrame(A)
+    dfMessage = pd.DataFrame(B)
+    dfRule = pd.DataFrame(C)
+    writer = pd.ExcelWriter('Nuula.xlsx', engine='xlsxwriter')
+    if len(A) > 0:
+        dfError.to_excel(writer, sheet_name='Error')
+    if len(B) > 0:
+        dfMessage.to_excel(writer, sheet_name='Message')
+    if len(C) > 0:
+        dfRule.to_excel(writer, sheet_name='Rules')
+    writer.save()
+    print("Number of XML files in the directory are:", len(D))  # correct
+    print("Number of XMLs failed:", (incorrectPath+rootNotData))
+    logging.info("Number of XML failed: " + str(incorrectPath+rootNotData))
+    print("Number of XMLs processed:", numProcessed)
+    logging.info("Number of files processed: " + str(numProcessed))
+    for x in correctFiles:
+        print("Processed files are:", x)
+    print("Excel file created")
+    logging.info('ELSX file created')
+else:
+    print("Number of XML files in the directory are:", len(D))
+    print("Number of XMLs failed:", len(D))
+    print("Number of XMLs processed: 0")
